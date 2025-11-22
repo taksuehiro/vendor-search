@@ -1,0 +1,55 @@
+﻿AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: RAG Step2 backend (Lambda + Bedrock + OpenSearch)
+
+Parameters:
+  OpenSearchEndpoint: { Type: String }
+  OpenSearchIndexAlias: { Type: String, Default: docs_v_current }
+  BedrockEmbeddingsModelId: { Type: String, Default: amazon.titan-embed-text-v2:0 }
+  LlmModelId: { Type: String, Default: anthropic.claude-3-haiku-20240307-v1:0 }
+  IngestBucketName: { Type: String }
+
+Globals:
+  Function:
+    Runtime: python3.11
+    Timeout: 20
+    MemorySize: 1024
+    Environment:
+      Variables:
+        OPENSEARCH_ENDPOINT: !Ref OpenSearchEndpoint
+        OPENSEARCH_INDEX_ALIAS: !Ref OpenSearchIndexAlias
+        BEDROCK_EMBEDDINGS_MODEL_ID: !Ref BedrockEmbeddingsModelId
+        LLM_MODEL_ID: !Ref LlmModelId
+
+Resources:
+  ApiFunc:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda/
+      Handler: app.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action: ["bedrock:InvokeModel","bedrock:InvokeModelWithResponseStream"]
+              Resource: "*"
+
+  IngestFunc:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ingest/
+      Handler: app.handler
+      Events:
+        S3Put:
+          Type: S3
+          Properties:
+            Bucket: !Ref IngestBucketName
+            Events: s3:ObjectCreated:Put
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action: ["bedrock:InvokeModel"]
+              Resource: "*"
+        - S3ReadPolicy:
+            BucketName: !Ref IngestBucketName
