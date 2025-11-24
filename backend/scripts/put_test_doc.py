@@ -3,7 +3,7 @@ import json
 import boto3
 import requests
 from requests_aws4auth import AWS4Auth
-import numpy as np
+import random
 
 # ─────────────────────────────
 # 設定
@@ -15,8 +15,6 @@ INDEX_NAME = os.environ.get("OPENSEARCH_INDEX", "vendor-notes")
 if not ENDPOINT:
     raise ValueError("OPENSEARCH_ENDPOINT is required")
 
-# ★ Serverless の Document API パス：
-# PUT https://<endpoint>/<index-name>/_doc/<id>
 DOC_URL = f"{ENDPOINT}/{INDEX_NAME}/_doc/1"
 
 # ─────────────────────────────
@@ -37,9 +35,9 @@ awsauth = AWS4Auth(
 )
 
 # ─────────────────────────────
-# Test vector（1024次元の乱数）
+# numpy を使わない 1024 次元ランダムベクトル
 # ─────────────────────────────
-vec = np.random.rand(1024).astype(float).tolist()
+vec = [random.random() for _ in range(1024)]
 
 # ─────────────────────────────
 # mapping + 最初の1件データ
@@ -54,7 +52,6 @@ payload = {
     "doc_type": "test",
     "tags": ["sample", "test"],
 
-    # ★ Serverless は "最初の PUT に mapping を含めると index を作成"
     "mappings": {
         "properties": {
             "text": {"type": "text"},
@@ -85,37 +82,29 @@ payload = {
 }
 
 # ─────────────────────────────
-# 実行
+# PUT 実行
 # ─────────────────────────────
 def put_test_doc():
     print("Putting test document to create index...")
     print("URL:", DOC_URL)
-    print("Index:", INDEX_NAME)
-    print("Region:", REGION)
 
     headers = {"Content-Type": "application/json"}
 
-    try:
-        r = requests.put(
-            DOC_URL,
-            auth=awsauth,
-            headers=headers,
-            data=json.dumps(payload, ensure_ascii=False)
-        )
+    r = requests.put(
+        DOC_URL,
+        auth=awsauth,
+        headers=headers,
+        data=json.dumps(payload, ensure_ascii=False)
+    )
 
-        print("Status:", r.status_code)
-        print("Response:", r.text)
+    print("Status:", r.status_code)
+    print("Response:", r.text)
 
-        if r.status_code in (200, 201):
-            print("✅ Index created & test document ingested")
-        else:
-            print("❌ Failed")
-            r.raise_for_status()
-            raise SystemExit(1)
-
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Request failed: {str(e)}")
-        raise SystemExit(1)
+    if r.status_code in (200, 201):
+        print("✅ Index created & test document ingested")
+    else:
+        print("❌ Failed")
+        r.raise_for_status()
 
 
 if __name__ == "__main__":
