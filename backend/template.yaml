@@ -1,13 +1,24 @@
 ﻿AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: RAG Step2 backend (Lambda + Bedrock + OpenSearch)
+Description: RAG Step2 backend (Lambda + Bedrock + OpenSearch Serverless)
 
 Parameters:
-  OpenSearchEndpoint: { Type: String }
-  OpenSearchIndexAlias: { Type: String, Default: docs_v_current }
-  BedrockEmbeddingsModelId: { Type: String, Default: amazon.titan-embed-text-v2:0 }
-  LlmModelId: { Type: String, Default: anthropic.claude-3-haiku-20240307-v1:0 }
-  IngestBucketName: { Type: String }
+  OpenSearchEndpoint: 
+    Type: String
+    Description: OpenSearch Serverless collection endpoint (e.g., https://xxxxx.aoss.amazonaws.com)
+  OpenSearchIndex: 
+    Type: String
+    Default: vendor-notes
+    Description: OpenSearch Serverless index name
+  BedrockEmbeddingsModelId: 
+    Type: String
+    Default: amazon.titan-embed-text-v2:0
+  LlmModelId: 
+    Type: String
+    Default: anthropic.claude-3-haiku-20240307-v1:0
+  IngestBucketName: 
+    Type: String
+    Description: S3 bucket name for ingestion
 
 Globals:
   Function:
@@ -17,9 +28,10 @@ Globals:
     Environment:
       Variables:
         OPENSEARCH_ENDPOINT: !Ref OpenSearchEndpoint
-        OPENSEARCH_INDEX_ALIAS: !Ref OpenSearchIndexAlias
+        OPENSEARCH_INDEX: !Ref OpenSearchIndex
         BEDROCK_EMBEDDINGS_MODEL_ID: !Ref BedrockEmbeddingsModelId
         LLM_MODEL_ID: !Ref LlmModelId
+        AWS_REGION: !Ref AWS::Region
 
 Resources:
   ApiFunc:
@@ -31,7 +43,14 @@ Resources:
         - AWSLambdaBasicExecutionRole
         - Statement:
             - Effect: Allow
-              Action: ["bedrock:InvokeModel","bedrock:InvokeModelWithResponseStream"]
+              Action: 
+                - "bedrock:InvokeModel"
+                - "bedrock:InvokeModelWithResponseStream"
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - "aoss:APIAccessAll"
+                - "aoss:APISearchAll"
               Resource: "*"
 
   IngestFunc:
@@ -49,7 +68,13 @@ Resources:
         - AWSLambdaBasicExecutionRole
         - Statement:
             - Effect: Allow
-              Action: ["bedrock:InvokeModel"]
+              Action: 
+                - "bedrock:InvokeModel"
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - "aoss:APIAccessAll"
+                - "aoss:APIDataAccessAll"
               Resource: "*"
         - S3ReadPolicy:
             BucketName: !Ref IngestBucketName
