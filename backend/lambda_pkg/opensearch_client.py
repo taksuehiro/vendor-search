@@ -102,6 +102,7 @@ class OpenSearchClient:
                 }
             }
 
+        print("DEBUG_BODY:", json.dumps(body)[:500])
         r = requests.post(SEARCH_URL, auth=awsauth, headers=HEADERS, data=json.dumps(body), timeout=10)
         print("DEBUG:", r.text)
         r.raise_for_status()
