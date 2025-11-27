@@ -1,5 +1,5 @@
 ﻿from unittest.mock import patch
-from lambda import bedrock_client as bc
+from lambda_pkg import bedrock_client as bc
 
 
 @patch.object(bc.BEDROCK, "invoke_model")

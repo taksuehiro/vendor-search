@@ -1,4 +1,4 @@
-﻿from lambda.opensearch_client import _rrf
+﻿from lambda_pkg.opensearch_client import _rrf
 
 
 def test_rrf_simple():

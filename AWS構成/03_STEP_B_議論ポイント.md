@@ -234,3 +234,5 @@ if event.get("queryStringParameters"):
 - [OpenSearch Serverless クライアント設定](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/serverless-clients.html)
 - [OpenSearch Serverless データアクセスポリシー](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/serverless-data-access.html)
 
+
+

@@ -37,7 +37,7 @@ Resources:
   ApiFunc:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: lambda/
+      CodeUri: lambda_pkg/
       Handler: app.handler
       Policies:
         - AWSLambdaBasicExecutionRole

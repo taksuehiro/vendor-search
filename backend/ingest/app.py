@@ -1,6 +1,6 @@
 ﻿import os, json, boto3, base64, requests
-from ..lambda.preprocess import split_text_jp, extract_meta
-from ..lambda.bedrock_client import embed_texts
+from ..lambda_pkg.preprocess import split_text_jp, extract_meta
+from ..lambda_pkg.bedrock_client import embed_texts
 
 OS = os.environ["OPENSEARCH_ENDPOINT"].rstrip("/")
 INDEX = os.environ.get("OPENSEARCH_INDEX_ALIAS", "docs_v_current")
