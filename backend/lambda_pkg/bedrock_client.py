@@ -4,11 +4,49 @@ EMBED_MODEL = os.getenv("BEDROCK_EMBEDDINGS_MODEL_ID", "amazon.titan-embed-text-
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
-    body = {"inputText": texts[0]} if len(texts) == 1 else {"inputText": texts}
+    body = {"inputText": texts if len(texts) > 1 else texts[0]}
+
     resp = BEDROCK.invoke_model(modelId=EMBED_MODEL, body=json.dumps(body))
+
     payload = json.loads(resp["body"].read())
-    vectors = payload.get("embedding") or payload.get("embeddings")
-    return vectors if isinstance(vectors[0], list) else [vectors]
+
+
+
+    # Titan v2 の形式に対応
+
+    if "embedding" in payload:
+
+        emb = payload["embedding"]
+
+        # パターンA: {"vector": [...]}
+
+        if isinstance(emb, dict) and "vector" in emb:
+
+            return [emb["vector"]]
+
+        # パターンB: ただの list
+
+        if isinstance(emb, list):
+
+            return [emb]
+
+
+
+    # Titan v1系 or embeddings plural 対応
+
+    if "embeddings" in payload:
+
+        emb = payload["embeddings"]
+
+        if isinstance(emb, list) and isinstance(emb[0], dict) and "vector" in emb[0]:
+
+            return [emb[0]["vector"]]
+
+        return emb
+
+
+
+    raise ValueError(f"Unexpected embed payload: {payload}")
 
 
 def generate_answer(query: str, docs: list[dict]) -> tuple[str, list[dict]]:
