@@ -76,17 +76,31 @@ class OpenSearchClient:
     def knn_search(q_vec, size: int, filters=None):
         body = {
             "size": size,
-            "knn": {
-                "field": "vector",
-                "query_vector": q_vec,
-                "k": size,
-                "num_candidates": max(100, size),
+            "query": {
+                "knn": {
+                    "field": "vector",            # ← mapping の vector フィールド名
+                    "query_vector": q_vec,        # ← embedding array
+                    "k": size                     # ← top-k
+                }
             }
         }
-        
-        # フィルターがある場合は query に追加（k-NN と組み合わせ）
+
+        # フィルターがある場合
         if filters:
-            body["query"] = {"bool": {"filter": [{"term": {k: v}} for k, v in filters.items()]}}
+            body["query"] = {
+                "bool": {
+                    "filter": [{"term": {k: v}} for k, v in filters.items()],
+                    "must": [
+                        {
+                            "knn": {
+                                "field": "vector",
+                                "query_vector": q_vec,
+                                "k": size
+                            }
+                        }
+                    ]
+                }
+            }
 
         r = requests.post(SEARCH_URL, auth=awsauth, headers=HEADERS, data=json.dumps(body), timeout=10)
         r.raise_for_status()
