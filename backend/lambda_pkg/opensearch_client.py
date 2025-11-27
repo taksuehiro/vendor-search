@@ -77,10 +77,11 @@ class OpenSearchClient:
         body = {
             "size": size,
             "query": {
-                "knn": {
-                    "field": "vector",            # ← mapping の vector フィールド名
-                    "query_vector": q_vec,        # ← embedding array
-                    "k": size                     # ← top-k
+                "neural": {
+                    "vector": {
+                        "query_vector": q_vec,
+                        "k": size
+                    }
                 }
             }
         }
@@ -92,10 +93,11 @@ class OpenSearchClient:
                     "filter": [{"term": {k: v}} for k, v in filters.items()],
                     "must": [
                         {
-                            "knn": {
-                                "field": "vector",
-                                "query_vector": q_vec,
-                                "k": size
+                            "neural": {
+                                "vector": {
+                                    "query_vector": q_vec,
+                                    "k": size
+                                }
                             }
                         }
                     ]
