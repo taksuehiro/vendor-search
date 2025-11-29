@@ -18,19 +18,18 @@ if not OS_ENDPOINT:
 SEARCH_URL = f"{OS_ENDPOINT}/{INDEX_NAME}/_search"
 
 # ==============================
-# SigV4 認証（Serverless必須）
+# SigV4 認証
 # ==============================
 session = boto3.Session()
 credentials = session.get_credentials()
-
 if not credentials:
-    raise ValueError("AWS credentials not found. Configure AWS credentials first.")
+    raise ValueError("AWS credentials not found.")
 
 awsauth = AWS4Auth(
     credentials.access_key,
     credentials.secret_key,
     REGION,
-    "aoss",
+    "aoss",  # OpenSearch Serverless service name
     session_token=credentials.token,
 )
 
@@ -44,13 +43,13 @@ def embed_query(q: str):
     return embed_texts([q])[0]
 
 # ==============================
-# 検索クライアント
+# OpenSearch Client
 # ==============================
 
 class OpenSearchClient:
 
     # ---------------------
-    # BM25 キーワード検索
+    # BM25 検索
     # ---------------------
     @staticmethod
     @retry(reraise=True, stop=stop_after_attempt(3), wait=wait_fixed(0.5))
@@ -64,13 +63,15 @@ class OpenSearchClient:
             "size": size,
         }
 
-        r = requests.post(SEARCH_URL, auth=awsauth, headers=HEADERS,
-                          data=json.dumps(body), timeout=10)
+        r = requests.post(
+            SEARCH_URL, auth=awsauth, headers=HEADERS,
+            data=json.dumps(body), timeout=10
+        )
         r.raise_for_status()
         return r.json()
 
     # ---------------------
-    # neural kNN（意味検索）
+    # neural kNN 検索（VECTORSEARCH）
     # ---------------------
     @staticmethod
     @retry(reraise=True, stop=stop_after_attempt(3), wait=wait_fixed(0.5))
@@ -80,7 +81,8 @@ class OpenSearchClient:
             "neural": [
                 {
                     "vector": {
-                        "query": q_vec,
+                        "path": "vector",
+                        "query_vector": q_vec,
                         "k": size
                     }
                 }
@@ -105,14 +107,16 @@ class OpenSearchClient:
 
         print("DEBUG_BODY:", json.dumps(body)[:500])
 
-        r = requests.post(SEARCH_URL, auth=awsauth, headers=HEADERS,
-                          data=json.dumps(body), timeout=10)
+        r = requests.post(
+            SEARCH_URL, auth=awsauth, headers=HEADERS,
+            data=json.dumps(body), timeout=10
+        )
         print("DEBUG:", r.text)
         r.raise_for_status()
         return r.json()
 
     # ---------------------
-    # RRF（ランキング融合）
+    # RRF
     # ---------------------
     @staticmethod
     def rrf_merge(bm25_resp, knn_resp, size: int, k=60):
@@ -123,12 +127,14 @@ class OpenSearchClient:
         scores = {}
         id2doc = {}
 
+        # BM25
         for rank, hit in enumerate(bm25_resp.get("hits", {}).get("hits", [])):
             doc_id = hit["_id"]
             scores.setdefault(doc_id, 0)
             scores[doc_id] += score(rank)
             id2doc[doc_id] = hit
 
+        # kNN
         for rank, hit in enumerate(knn_resp.get("hits", {}).get("hits", [])):
             doc_id = hit["_id"]
             scores.setdefault(doc_id, 0)
@@ -152,11 +158,11 @@ class OpenSearchClient:
 
         return OpenSearchClient.rrf_merge(bm25_resp, knn_resp, size)
 
-# ==============================
-# ラッパー（互換用）
-# ==============================
-def search_hybrid(q: str, k=8, filters=None):
 
+# ---------------------
+# ラッパー関数（互換用）
+# ---------------------
+def search_hybrid(q: str, k=8, filters=None):
     hits = OpenSearchClient.hybrid_search(q, size=k, filters=filters)
     return [
         {
@@ -166,4 +172,3 @@ def search_hybrid(q: str, k=8, filters=None):
         }
         for h in hits
     ]
-EOF
