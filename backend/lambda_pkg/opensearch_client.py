@@ -108,7 +108,8 @@ class OpenSearchClient:
         self,
         query_vector: List[float],
         size: int = 10,
-        filters: Optional[Dict] = None
+        filters: Optional[Dict] = None,
+        vector_field: str = "vector"
     ) -> List[Dict]:
         """
         kNN（ベクトル）検索を実行（AOSS VECTORSEARCH 用 neural クエリ）
@@ -117,17 +118,18 @@ class OpenSearchClient:
             query_vector: クエリベクトル（例: Bedrock Titan-embed-text-v2:0 の出力）
             size: 取得件数
             filters: フィルタ条件（例: {"term": {"category": "tech"}}）
+            vector_field: ベクトルフィールド名（デフォルト: "vector"）
         
         Returns:
             検索結果のリスト [{"_id": ..., "_score": ..., "_source": {...}}, ...]
         """
-        # AOSS VECTORSEARCH の正しい neural クエリ構造
+        # AOSS VECTORSEARCH の neural クエリ構造（シンプル版）
+        # field 指定を削除して、フィールド名を直接 neural の下に配置
         body = {
             "query": {
                 "neural": {
-                    "vector": {  # ← field 名（インデックスマッピングと一致）
-                        "field": "vector",  # ← "path" ではなく "field"
-                        "query_vector": query_vector,  # ← "vector" ではなく "query_vector"
+                    vector_field: {
+                        "query_vector": query_vector,
                         "k": size
                     }
                 }
@@ -140,7 +142,7 @@ class OpenSearchClient:
             body["query"] = {
                 "bool": {
                     "must": [
-                        {"neural": body["query"]["neural"]}
+                        {"neural": {vector_field: {"query_vector": query_vector, "k": size}}}
                     ],
                     "filter": filters
                 }
@@ -155,6 +157,17 @@ class OpenSearchClient:
             json=body,
             timeout=30
         )
+        
+        # デバッグ情報を含むエラーハンドリング
+        if response.status_code != 200:
+            error_detail = {
+                "status_code": response.status_code,
+                "response_text": response.text,
+                "query_body": body,
+                "vector_dimensions": len(query_vector)
+            }
+            print(f"kNN Search Error: {json.dumps(error_detail, indent=2, ensure_ascii=False)}")
+        
         response.raise_for_status()
         
         result = response.json()
@@ -260,21 +273,35 @@ class OpenSearchClient:
     # =========================================================================
     def health_check(self) -> Dict:
         """
-        OpenSearch Serverless の接続確認
+        OpenSearch Serverless の接続確認（インデックス存在チェック）
         
         Returns:
-            {"status": "ok", "cluster_name": "...", ...}
+            {"status": "ok", "index": "...", "exists": True/False}
         """
-        url = f"{self.base_url}/_cluster/health"
+        # AOSS では _cluster/health が使えないため、インデックス存在確認を使用
+        url = f"{self.base_url}/{self.index_name}"
         
-        response = requests.get(
-            url,
-            auth=self.auth,
-            timeout=10
-        )
-        response.raise_for_status()
-        
-        return response.json()
+        try:
+            response = requests.head(
+                url,
+                auth=self.auth,
+                timeout=10
+            )
+            exists = response.status_code == 200
+            
+            return {
+                "status": "ok" if exists else "index_not_found",
+                "index": self.index_name,
+                "exists": exists,
+                "endpoint": self.endpoint
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "index": self.index_name,
+                "error": str(e),
+                "endpoint": self.endpoint
+            }
 
 
 # =========================================================================
