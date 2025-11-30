@@ -16,9 +16,6 @@ Parameters:
   LlmModelId: 
     Type: String
     Default: anthropic.claude-3-haiku-20240307-v1:0
-  IngestBucketName: 
-    Type: String
-    Description: S3 bucket name for ingestion
 
 Globals:
   Function:
@@ -34,6 +31,17 @@ Globals:
         AWS_REGION: !Ref AWS::Region
 
 Resources:
+  # S3 バケット（Ingest 用）
+  IngestBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'vendor-search-notes-${AWS::AccountId}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  # API Lambda 関数
   ApiFunc:
     Type: AWS::Serverless::Function
     Properties:
@@ -50,20 +58,26 @@ Resources:
             - Effect: Allow
               Action:
                 - "aoss:APIAccessAll"
-                - "aoss:APISearchAll"
               Resource: "*"
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /search
+            Method: get
 
+  # Ingest Lambda 関数
   IngestFunc:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ingest/
       Handler: app.handler
       Events:
-        S3Put:
+        S3Event:
           Type: S3
           Properties:
-            Bucket: !Ref IngestBucketName
-            Events: s3:ObjectCreated:Put
+            Bucket: !Ref IngestBucket
+            Events: s3:ObjectCreated:*
       Policies:
         - AWSLambdaBasicExecutionRole
         - Statement:
@@ -74,7 +88,15 @@ Resources:
             - Effect: Allow
               Action:
                 - "aoss:APIAccessAll"
-                - "aoss:APIDataAccessAll"
               Resource: "*"
         - S3ReadPolicy:
-            BucketName: !Ref IngestBucketName
+            BucketName: !Ref IngestBucket
+
+Outputs:
+  ApiEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/search"
+  
+  IngestBucketName:
+    Description: "S3 bucket for document ingestion"
+    Value: !Ref IngestBucket
