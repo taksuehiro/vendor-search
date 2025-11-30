@@ -28,7 +28,7 @@ Globals:
         OPENSEARCH_INDEX: !Ref OpenSearchIndex
         BEDROCK_EMBEDDINGS_MODEL_ID: !Ref BedrockEmbeddingsModelId
         LLM_MODEL_ID: !Ref LlmModelId
-        AWS_REGION: !Ref AWS::Region
+        # AWS_REGION は削除（Lambda が自動設定）
 
 Resources:
   # S3 バケット（Ingest 用）
