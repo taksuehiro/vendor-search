@@ -5,7 +5,7 @@ Description: RAG Step2 backend (Lambda + Bedrock + OpenSearch Serverless)
 Parameters:
   OpenSearchEndpoint: 
     Type: String
-    Description: OpenSearch Serverless collection endpoint (e.g., https://xxxxx.aoss.amazonaws.com)
+    Description: OpenSearch Serverless collection endpoint
   OpenSearchIndex: 
     Type: String
     Default: vendor-notes
@@ -20,7 +20,7 @@ Parameters:
 Globals:
   Function:
     Runtime: python3.9
-    Timeout: 20
+    Timeout: 60
     MemorySize: 1024
     Environment:
       Variables:
@@ -40,6 +40,10 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt IngestFunc.Arn
 
   # API Lambda 関数
   ApiFunc:
@@ -72,12 +76,7 @@ Resources:
     Properties:
       CodeUri: ingest/
       Handler: app.handler
-      Events:
-        S3Event:
-          Type: S3
-          Properties:
-            Bucket: !Ref IngestBucket
-            Events: s3:ObjectCreated:*
+      Timeout: 300
       Policies:
         - AWSLambdaBasicExecutionRole
         - Statement:
@@ -90,7 +89,16 @@ Resources:
                 - "aoss:APIAccessAll"
               Resource: "*"
         - S3ReadPolicy:
-            BucketName: !Ref IngestBucket
+            BucketName: !Sub 'vendor-search-notes-${AWS::AccountId}'
+
+  # Lambda の S3 実行許可
+  IngestFuncS3Permission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref IngestFunc
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub 'arn:aws:s3:::vendor-search-notes-${AWS::AccountId}'
 
 Outputs:
   ApiEndpoint:
