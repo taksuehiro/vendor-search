@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIベンダーナレッジポータル</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', sans-serif;
+            background-color: #f9fafb;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        /* ヘッダー */
+        .header {
+            background-color: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 1.5rem;
+            color: #111827;
+        }
+        .logout-btn {
+            padding: 0.5rem 1rem;
+            background-color: white;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        .logout-btn:hover {
+            background-color: #f9fafb;
+        }
+        /* 左側: Knowledge Search (60%) */
+        .left-panel {
+            width: 60%;
+            background-color: white;
+            border-right: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+        }
+        .left-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .left-header h2 {
+            font-size: 1.5rem;
+            color: #111827;
+        }
+        .search-area {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+        .form-group select,
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+        }
+        .form-group select:focus,
+        .form-group input[type="text"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .search-box {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .search-box input {
+            flex: 1;
+        }
+        .search-btn {
+            padding: 0.5rem 1.5rem;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .search-btn:hover {
+            background-color: #1d4ed8;
+        }
+        .search-btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+        /* 検索結果エリア */
+        .results-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #6b7280;
+        }
+        .empty-state p {
+            margin-bottom: 0.5rem;
+        }
+        .empty-state p:last-child {
+            font-size: 0.875rem;
+        }
+        /* ローディング */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem;
+        }
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #2563eb;
+            border-radius: 50%;
+            width: 3rem;
+            height: 3rem;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* ベンダーカード */
+        .vendor-card {
+            background-color: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            transition: box-shadow 0.2s;
+        }
+        .vendor-card:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .vendor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.75rem;
+        }
+        .vendor-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .vendor-title h3 {
+            font-size: 1.125rem;
+            color: #111827;
+        }
+        .rank-badge {
+            font-size: 1.5rem;
+        }
+        .score-badge {
+            background-color: #dbeafe;
+            color: #1e40af;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .vendor-meta {
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+        .vendor-meta p {
+            margin-bottom: 0.5rem;
+            color: #374151;
+        }
+        .vendor-meta .label {
+            font-weight: 500;
+        }
+        .vendor-meta .note {
+            color: #6b7280;
+            font-size: 0.75rem;
+        }
+        .vendor-text {
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .vendor-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .vendor-actions button {
+            flex: 1;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-detail {
+            background-color: white;
+            color: #2563eb;
+            border: 1px solid #2563eb;
+        }
+        .btn-detail:hover {
+            background-color: #eff6ff;
+        }
+        .btn-contact {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+        }
+        .btn-contact:hover {
+            background-color: #1d4ed8;
+        }
+        /* 右側: ベンダー選定ガイド (40%) */
+        .right-panel {
+            width: 40%;
+            background-color: #f9fafb;
+            display: flex;
+            flex-direction: column;
+        }
+        .right-header {
+            padding: 1.5rem;
+            background-color: white;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .right-header h2 {
+            font-size: 1.25rem;
+            color: #111827;
+            margin-bottom: 0.25rem;
+        }
+        .right-header p {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        .guide-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+        .question-group {
+            margin-bottom: 1.5rem;
+        }
+        .question-group label.question-label {
+            display: block;
+            font-weight: 500;
+            color: #111827;
+            margin-bottom: 0.75rem;
+            font-size: 0.9375rem;
+        }
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .radio-option {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .radio-option input[type="radio"] {
+            width: 1rem;
+            height: 1rem;
+            margin-right: 0.5rem;
+            cursor: pointer;
+        }
+        .radio-option span {
+            font-size: 0.875rem;
+            color: #374151;
+        }
+        .guide-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+        .btn-guided-search {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn-guided-search:hover {
+            background-color: #1d4ed8;
+        }
+        .btn-guided-search:disabled {
+            background-color: #d1d5db;
+            cursor: not-allowed;
+        }
+        .btn-reset {
+            width: 100%;
+            padding: 0.5rem;
+            background-color: white;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn-reset:hover {
+            background-color: #f9fafb;
+        }
+        /* ガイド検索結果ヘッダー */
+        .guided-header {
+            background-color: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .guided-header h3 {
+            color: #111827;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .guided-header ul {
+            list-style: none;
+            font-size: 0.875rem;
+            color: #374151;
+        }
+        .guided-header li {
+            margin-bottom: 0.25rem;
+        }
+        /* レスポンシブ */
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+            }
+            .left-panel,
+            .right-panel {
+                width: 100%;
+            }
+            .left-panel {
+                height: 50vh;
+                border-right: none;
+                border-bottom: 1px solid #e5e7eb;
+            }
+            .right-panel {
+                height: 50vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左側: Knowledge Search -->
+        <div class="left-panel">
+            <div class="left-header">
+                <h2>🔍 Knowledge Search</h2>
+            </div>
+
+            <!-- 検索エリア -->
+            <div class="search-area">
+                <div class="form-group">
+                    <label>🏢 会社名</label>
+                    <select id="companySelect">
+                        <option value="">会社名で絞り込む</option>
+                        <option value="Akari">Akari</option>
+                        <option value="Acrosstudio">Acrosstudio</option>
+                        <option value="Araya">Araya</option>
+                        <option value="BrainPad">BrainPad</option>
+                        <option value="Eriza">Eriza</option>
+                        <option value="Fusic">Fusic</option>
+                        <option value="LaboroAI">LaboroAI</option>
+                        <option value="LiberCraft">LiberCraft</option>
+                        <option value="LightBlue">LightBlue</option>
+                        <option value="NUCO">NUCO</option>
+                        <option value="TANREN">TANREN</option>
+                        <option value="Weel">Weel</option>
+                        <option value="クラスメソッド">クラスメソッド</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="検索語を入力してください...">
+                        <button class="search-btn" onclick="handleFreeSearch()">検索</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 検索結果エリア -->
+            <div class="results-area" id="resultsArea">
+                <div class="empty-state">
+                    <p>検索結果がここに表示されます。</p>
+                    <p>キーワードを入力して検索してください。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右側: ベンダー選定ガイド -->
+        <div class="right-panel">
+            <div class="right-header">
+                <h2>🎯 ベンダー選定ガイド</h2>
+                <p>いくつかの質問に答えて、最適なベンダーを見つけましょう</p>
+            </div>
+
+            <div class="guide-area">
+                <!-- 質問1: 目的 -->
+                <div class="question-group">
+                    <label class="question-label">❓ この案件の目的は？</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="purpose" value="業務効率化">
+                            <span>業務効率化（コスト削減）</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="purpose" value="新規事業開発">
+                            <span>新規事業・サービス開発</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="purpose" value="技術検証">
+                            <span>技術検証・研究開発</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="purpose" value="人材育成">
+                            <span>人材育成・内製化</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 質問2: 予算 -->
+                <div class="question-group">
+                    <label class="question-label">❓ 予算は？</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="budget" value="〜300万円">
+                            <span>〜300万円</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="budget" value="300-1000万円">
+                            <span>300-1000万円</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="budget" value="1000万円〜">
+                            <span>1000万円〜</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="budget" value="未定">
+                            <span>未定</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 質問3: リスク -->
+                <div class="question-group">
+                    <label class="question-label">❓ リスク許容度は？</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="risk" value="高">
+                            <span>高（失敗OK、学びが重要）</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="risk" value="中">
+                            <span>中（一定の成果が必要）</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="risk" value="低">
+                            <span>低（確実に成果を出す必要）</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 質問4: スケジュール -->
+                <div class="question-group">
+                    <label class="question-label">❓ スケジュールは？</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="schedule" value="急ぎ">
+                            <span>急ぎ（3ヶ月以内）</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="schedule" value="通常">
+                            <span>通常（6ヶ月）</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="schedule" value="長期">
+                            <span>長期（1年以上）</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 質問5: 内製化 -->
+                <div class="question-group">
+                    <label class="question-label">❓ 内製化の意図は？</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="internal" value="完全外注">
+                            <span>完全外注</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="internal" value="将来内製化">
+                            <span>将来的に内製化</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="internal" value="内製化前提">
+                            <span>最初から内製化前提</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- ボタン -->
+                <div class="guide-buttons">
+                    <button class="btn-guided-search" onclick="handleGuidedSearch()" id="guidedSearchBtn">
+                        おすすめベンダーを探す
+                    </button>
+                    <button class="btn-reset" onclick="handleReset()">
+                        リセット
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 状態管理
+        let currentState = {
+            searchMode: null, // 'free' or 'guided'
+            loading: false,
+            results: [],
+            guidedCriteria: {}
+        };
+
+        // フリー検索
+        async function handleFreeSearch() {
+            const query = document.getElementById('searchInput').value;
+            const company = document.getElementById('companySelect').value;
+            if (!query.trim()) {
+                alert('検索キーワードを入力してください');
+                return;
+            }
+
+            currentState.searchMode = 'free';
+            currentState.loading = true;
+            showLoading();
+
+            // ダミーデータで検索結果を表示（実際はAPIコール）
+            setTimeout(() => {
+                currentState.results = getMockFreeSearchResults(query, company);
+                currentState.loading = false;
+                renderResults();
+            }, 500);
+        }
+
+        // ガイド検索
+        async function handleGuidedSearch() {
+            const criteria = getGuidedCriteria();
+            
+            if (!hasSelection(criteria)) {
+                alert('少なくとも1つの質問に回答してください');
+                return;
+            }
+
+            currentState.searchMode = 'guided';
+            currentState.guidedCriteria = criteria;
+            currentState.loading = true;
+            showLoading();
+
+            // ダミーデータで検索結果を表示（実際はAPIコール）
+            setTimeout(() => {
+                currentState.results = getMockGuidedSearchResults(criteria);
+                currentState.loading = false;
+                renderResults();
+            }, 500);
+        }
+
+        // リセット
+        function handleReset() {
+            document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                radio.checked = false;
+            });
+            document.getElementById('searchInput').value = '';
+            document.getElementById('companySelect').value = '';
+            
+            currentState = {
+                searchMode: null,
+                loading: false,
+                results: [],
+                guidedCriteria: {}
+            };
+            showEmptyState();
+        }
+
+        // ガイド検索の条件を取得
+        function getGuidedCriteria() {
+            return {
+                purpose: getSelectedRadio('purpose'),
+                budget: getSelectedRadio('budget'),
+                risk: getSelectedRadio('risk'),
+                schedule: getSelectedRadio('schedule'),
+                internal: getSelectedRadio('internal')
+            };
+        }
+
+        function getSelectedRadio(name) {
+            const selected = document.querySelector(`input[name="${name}"]:checked`);
+            return selected ? selected.value : null;
+        }
+
+        function hasSelection(criteria) {
+            return Object.values(criteria).some(v => v !== null);
+        }
+
+        // ローディング表示
+        function showLoading() {
+            const resultsArea = document.getElementById('resultsArea');
+            resultsArea.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+        }
+
+        // 空状態表示
+        function showEmptyState() {
+            const resultsArea = document.getElementById('resultsArea');
+            resultsArea.innerHTML = `
+                <div class="empty-state">
+                    <p>検索結果がここに表示されます。</p>
+                    <p>キーワードを入力して検索してください。</p>
+                </div>
+            `;
+        }
+
+        // 検索結果レンダリング
+        function renderResults() {
+            const resultsArea = document.getElementById('resultsArea');
+            
+            if (currentState.results.length === 0) {
+                resultsArea.innerHTML = `
+                    <div class="empty-state">
+                        <p>検索結果が見つかりませんでした。</p>
+                        <p>条件を変更して再度検索してください。</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            // ガイド検索の場合はヘッダーを表示
+            if (currentState.searchMode === 'guided') {
+                html += renderGuidedHeader();
+            }
+
+            // 検索結果カード
+            currentState.results.forEach((result, index) => {
+                html += renderVendorCard(result, index + 1);
+            });
+
+            resultsArea.innerHTML = html;
+        }
+
+        // ガイド検索ヘッダー
+        function renderGuidedHeader() {
+            const criteria = currentState.guidedCriteria;
+            let items = '';
+            
+            if (criteria.purpose) items += `<li>• 目的: ${criteria.purpose}</li>`;
+            if (criteria.budget) items += `<li>• 予算: ${criteria.budget}</li>`;
+            if (criteria.schedule) items += `<li>• スケジュール: ${criteria.schedule}</li>`;
+            return `
+                <div class="guided-header">
+                    <h3>🎯 あなたにおすすめのベンダー</h3>
+                    <ul>${items}</ul>
+                </div>
+            `;
+        }
+
+        // ベンダーカード
+        function renderVendorCard(result, rank) {
+            const medals = ['🥇', '🥈', '🥉'];
+            const showRank = currentState.searchMode === 'guided' && rank <= 3;
+            const medal = showRank ? medals[rank - 1] : '';
+            const score = currentState.searchMode === 'guided' ? Math.round(result.score * 100) : null;
+
+            return `
+                <div class="vendor-card">
+                    <div class="vendor-header">
+                        <div class="vendor-title">
+                            ${medal ? `<span class="rank-badge">${medal}</span>` : ''}
+                            <h3>🏢 ${result.company}</h3>
+                        </div>
+                        ${score ? `<span class="score-badge">適合度: ${score}%</span>` : ''}
+                    </div>
+                    <div class="vendor-meta">
+                        ${result.specialty ? `<p><span class="label">得意分野:</span> ${result.specialty}</p>` : ''}
+                        ${result.rate ? `<p><span class="label">人月単価:</span> ${result.rate}</p>` : ''}
+                    </div>
+                    <div class="vendor-text">
+                        ${result.text}
+                    </div>
+                    <div class="vendor-actions">
+                        <button class="btn-detail">詳細を見る</button>
+                        <button class="btn-contact">問い合わせ</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ダミーデータ生成
+        function getMockFreeSearchResults(query, company) {
+            const companies = [
+                'Akari', 'Acrosstudio', 'Araya', 'BrainPad', 'Eriza',
+                'Fusic', 'LaboroAI', 'LiberCraft', 'LightBlue', 'NUCO',
+                'TANREN', 'Weel', 'クラスメソッド'
+            ];
+
+            const filtered = company 
+                ? companies.filter(c => c === company)
+                : companies.slice(0, 5);
+
+            return filtered.map(comp => ({
+                company: comp,
+                specialty: 'AI開発・機械学習',
+                rate: '80-120万円/人月',
+                text: `${query}に関する${comp}のナレッジベースからの検索結果です。実際のプロジェクトでの実績や技術的な知見が含まれています。`
+            }));
+        }
+
+        function getMockGuidedSearchResults(criteria) {
+            const companies = ['Akari', 'BrainPad', 'LaboroAI', 'LiberCraft', 'NUCO'];
+            return companies.map((comp, index) => ({
+                company: comp,
+                specialty: 'AI開発・機械学習',
+                rate: '80-120万円/人月',
+                text: `${comp}は、${criteria.purpose || '様々な'}プロジェクトに強みを持っています。`,
+                score: 0.95 - index * 0.1
+            }));
+        }
+
+        // Enterキーで検索
+        document.getElementById('searchInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                handleFreeSearch();
+            }
+        });
+    </script>
+</body>
+</html>
