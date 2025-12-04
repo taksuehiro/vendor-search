@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { search as apiSearch } from "../../lib/api";
 import { SearchBox } from "../../components/search/SearchBox";
@@ -8,7 +8,7 @@ import { Filters } from "../../components/search/Filters";
 import { ResultCard } from "../../components/search/ResultCard";
 import type { SearchFilters, SearchResult } from "../../lib/schemas";
 
-export default function SearchPage() {
+function SearchContent() {
   const sp = useSearchParams();
   const [q, setQ] = useState(sp.get("q") ?? "");
   const [filters, setFilters] = useState<SearchFilters>({});
@@ -40,5 +40,20 @@ export default function SearchPage() {
         {results.map((r) => <ResultCard key={r.id} result={r} />)}
       </div>
     </main>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <main className="space-y-4">
+        <div className="flex gap-2">
+          <div className="flex-1 rounded-md border px-3 py-2 bg-gray-100 animate-pulse" />
+          <div className="rounded-md border px-4 py-2 bg-gray-100 animate-pulse w-20" />
+        </div>
+      </main>
+    }>
+      <SearchContent />
+    </Suspense>
   );
 }
