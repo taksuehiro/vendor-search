@@ -21,29 +21,29 @@ const COMPANIES = [
   "クラスメソッド",
 ];
 
-type GuidedCriteria = {
-  purpose: string | null;
-  requirements: string;
-  budget: string | null;
-  track_record: string | null;
-  internal_support: string | null;
-  speed: string | null;
-  priority: string | null;
-};
+interface VendorSearchForm {
+  priorities: string[];        // 質問1の複数選択
+  developmentStyle: string;    // 質問2の単一選択
+  companySize: string;         // 質問3の単一選択
+  techStack: string[];         // 質問4の複数選択
+  industry: string;            // 質問5の単一選択
+  ipOwnership: string;         // 質問6の単一選択
+  partnership: string;         // 質問7の単一選択
+}
 
 export default function HomePage() {
   const [query, setQuery] = useState("");
   const [company, setCompany] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [guidedCriteria, setGuidedCriteria] = useState<GuidedCriteria>({
-    purpose: null,
-    requirements: "",
-    budget: null,
-    track_record: null,
-    internal_support: null,
-    speed: null,
-    priority: null,
+  const [vendorForm, setVendorForm] = useState<VendorSearchForm>({
+    priorities: [],
+    developmentStyle: "",
+    companySize: "",
+    techStack: [],
+    industry: "",
+    ipOwnership: "",
+    partnership: "",
   });
 
   const handleFreeSearch = async () => {
@@ -64,15 +64,17 @@ export default function HomePage() {
   const handleGuidedSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!hasSelection(guidedCriteria)) {
-      alert("少なくとも1つの質問に回答してください");
-      return;
+    if (!hasSelection(vendorForm)) {
+      const shouldContinue = window.confirm(
+        "より正確な推薦のため、1つ以上選択することをおすすめします。\nこのまま検索を続けますか？"
+      );
+      if (!shouldContinue) return;
     }
 
     setLoading(true);
     // ダミーデータ（実際はAPIコール）
     setTimeout(() => {
-      const mockResults = getMockGuidedSearchResults(guidedCriteria);
+      const mockResults = getMockGuidedSearchResults(vendorForm);
       setResults(mockResults);
       setLoading(false);
     }, 500);
@@ -82,14 +84,14 @@ export default function HomePage() {
     setQuery("");
     setCompany("");
     setResults([]);
-    setGuidedCriteria({
-      purpose: null,
-      requirements: "",
-      budget: null,
-      track_record: null,
-      internal_support: null,
-      speed: null,
-      priority: null,
+    setVendorForm({
+      priorities: [],
+      developmentStyle: "",
+      companySize: "",
+      techStack: [],
+      industry: "",
+      ipOwnership: "",
+      partnership: "",
     });
   };
 
@@ -171,24 +173,67 @@ export default function HomePage() {
           <span className="text-2xl">🎯</span>
           <h2 className="text-2xl font-bold text-gray-900 mt-2">ベンダー選定ガイド</h2>
           <p className="text-sm text-gray-500 mt-1">
-            いくつかの質問に答えて、最適なベンダーを見つけましょう
+            AI ベンダーの選定を質問形式でサポートします
           </p>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          <form onSubmit={handleGuidedSearch} className="space-y-5">
-            {/* Q1: 案件の目的 */}
+          <form onSubmit={handleGuidedSearch} className="space-y-5" style={{ gap: "20px" }}>
+            {/* Q1: プロジェクトの性質（複数選択可） */}
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
               <label className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-4">
                 <span>❓</span>
-                <span>この案件の目的は？</span>
+                <span>1. このプロジェクトで最も重視することは？（複数選択可）</span>
               </label>
               <div className="space-y-3">
                 {[
-                  { value: "efficiency", label: "業務効率化（コスト削減）" },
-                  { value: "new_business", label: "新規事業・サービス開発" },
-                  { value: "research", label: "技術検証・PoC" },
-                  { value: "training", label: "人材育成・内製化準備" },
+                  { value: "tech_innovation", label: "技術的な先進性・最新技術の活用" },
+                  { value: "domain_knowledge", label: "業界知見・ドメイン理解の深さ" },
+                  { value: "internalization", label: "内製化支援・ナレッジ移管" },
+                  { value: "aws_development", label: "AWS環境での開発・運用" },
+                  { value: "cost_performance", label: "コストパフォーマンス" },
+                  { value: "implementation_speed", label: "実装スピード" },
+                ].map((option) => (
+                  <label
+                    key={option.value}
+                    className="flex items-center gap-3 p-3 bg-white border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={vendorForm.priorities.includes(option.value)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setVendorForm({
+                            ...vendorForm,
+                            priorities: [...vendorForm.priorities, option.value],
+                          });
+                        } else {
+                          setVendorForm({
+                            ...vendorForm,
+                            priorities: vendorForm.priorities.filter((v) => v !== option.value),
+                          });
+                        }
+                      }}
+                      className="w-5 h-5"
+                    />
+                    <span className="text-sm text-gray-700">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Q2: 開発体制の希望（単一選択） */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
+              <label className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-4">
+                <span>❓</span>
+                <span>2. どのような開発体制を希望しますか？</span>
+              </label>
+              <div className="space-y-3">
+                {[
+                  { value: "full_outsource", label: "完全受託（丸投げOK）" },
+                  { value: "collaborative", label: "協働開発（一緒に作る）" },
+                  { value: "internal_support", label: "内製支援・伴走型（最終的に自社で運用）" },
+                  { value: "consulting", label: "コンサルティング中心（企画・設計まで）" },
                 ].map((option) => (
                   <label
                     key={option.value}
@@ -196,11 +241,11 @@ export default function HomePage() {
                   >
                     <input
                       type="radio"
-                      name="purpose"
+                      name="developmentStyle"
                       value={option.value}
-                      checked={guidedCriteria.purpose === option.value}
+                      checked={vendorForm.developmentStyle === option.value}
                       onChange={(e) =>
-                        setGuidedCriteria({ ...guidedCriteria, purpose: e.target.value })
+                        setVendorForm({ ...vendorForm, developmentStyle: e.target.value })
                       }
                       className="w-5 h-5"
                     />
@@ -210,37 +255,18 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Q2: 具体的な要件 */}
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
-              <label className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-4">
-                <span>📝</span>
-                <span>具体的な要件を教えてください</span>
-              </label>
-              <textarea
-                value={guidedCriteria.requirements}
-                onChange={(e) =>
-                  setGuidedCriteria({ ...guidedCriteria, requirements: e.target.value })
-                }
-                placeholder="例：画像認識を使った不良品検知、LLMを活用したチャットボット、社内文書のRAG検索システム など"
-                rows={3}
-                className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-              />
-              <small className="block mt-2 text-xs text-gray-500">
-                ※ この情報はフリー検索にも活用されます
-              </small>
-            </div>
-
-            {/* Q3: 予算 */}
+            {/* Q3: ベンダーの規模感（単一選択） */}
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
               <label className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-4">
                 <span>❓</span>
-                <span>予算は？</span>
+                <span>3. ベンダーの企業規模について</span>
               </label>
               <div className="space-y-3">
                 {[
-                  { value: "low", label: "〜500万円" },
-                  { value: "medium", label: "500〜2000万円" },
-                  { value: "high", label: "2000万円〜" },
+                  { value: "large", label: "大手・準大手が安心" },
+                  { value: "medium", label: "中堅企業（30-100名程度）" },
+                  { value: "small", label: "小規模でも専門性が高ければ良い（5-20名程度）" },
+                  { value: "no_preference", label: "特にこだわりなし" },
                 ].map((option) => (
                   <label
                     key={option.value}
@@ -248,11 +274,11 @@ export default function HomePage() {
                   >
                     <input
                       type="radio"
-                      name="budget"
+                      name="companySize"
                       value={option.value}
-                      checked={guidedCriteria.budget === option.value}
+                      checked={vendorForm.companySize === option.value}
                       onChange={(e) =>
-                        setGuidedCriteria({ ...guidedCriteria, budget: e.target.value })
+                        setVendorForm({ ...vendorForm, companySize: e.target.value })
                       }
                       className="w-5 h-5"
                     />
@@ -262,17 +288,62 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Q4: 実績の重要度 */}
+            {/* Q4: 技術スタック（複数選択可） */}
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
               <label className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-4">
                 <span>❓</span>
-                <span>実績の重要度は？</span>
+                <span>4. 必須の技術要件はありますか？（複数選択可）</span>
               </label>
               <div className="space-y-3">
                 {[
-                  { value: "low", label: "問わない（新しいベンダーでもOK）" },
-                  { value: "medium", label: "ある程度の実績は欲しい" },
-                  { value: "high", label: "豊富な実績が必須" },
+                  { value: "aws", label: "AWS（必須）" },
+                  { value: "azure_gcp", label: "Azure/GCP" },
+                  { value: "ai_ml", label: "AI/機械学習" },
+                  { value: "modern_web", label: "モダンWeb技術（React/Vue等）" },
+                  { value: "data_analysis", label: "データ分析基盤" },
+                  { value: "none", label: "特になし" },
+                ].map((option) => (
+                  <label
+                    key={option.value}
+                    className="flex items-center gap-3 p-3 bg-white border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={vendorForm.techStack.includes(option.value)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setVendorForm({
+                            ...vendorForm,
+                            techStack: [...vendorForm.techStack, option.value],
+                          });
+                        } else {
+                          setVendorForm({
+                            ...vendorForm,
+                            techStack: vendorForm.techStack.filter((v) => v !== option.value),
+                          });
+                        }
+                      }}
+                      className="w-5 h-5"
+                    />
+                    <span className="text-sm text-gray-700">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Q5: 対象業界・ドメイン（単一選択） */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
+              <label className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-4">
+                <span>❓</span>
+                <span>5. プロジェクトの対象業界は？</span>
+              </label>
+              <div className="space-y-3">
+                {[
+                  { value: "manufacturing", label: "製造業・工場" },
+                  { value: "logistics", label: "物流・サプライチェーン" },
+                  { value: "trading", label: "商社・貿易" },
+                  { value: "finance", label: "金融・保険" },
+                  { value: "generic", label: "汎用的なシステム" },
                 ].map((option) => (
                   <label
                     key={option.value}
@@ -280,11 +351,11 @@ export default function HomePage() {
                   >
                     <input
                       type="radio"
-                      name="track_record"
+                      name="industry"
                       value={option.value}
-                      checked={guidedCriteria.track_record === option.value}
+                      checked={vendorForm.industry === option.value}
                       onChange={(e) =>
-                        setGuidedCriteria({ ...guidedCriteria, track_record: e.target.value })
+                        setVendorForm({ ...vendorForm, industry: e.target.value })
                       }
                       className="w-5 h-5"
                     />
@@ -294,17 +365,18 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Q5: 内製化支援 */}
+            {/* Q6: 知財・所有権（単一選択） */}
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
               <label className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-4">
                 <span>❓</span>
-                <span>内製化支援の必要性は？</span>
+                <span>6. 開発したシステムの所有権について</span>
               </label>
               <div className="space-y-3">
                 {[
-                  { value: "low", label: "不要（外注でOK）" },
-                  { value: "medium", label: "あると嬉しい" },
-                  { value: "high", label: "必須（自社で運用したい）" },
+                  { value: "full_transfer", label: "当社に完全譲渡してほしい" },
+                  { value: "standard", label: "標準的な契約で問題ない" },
+                  { value: "vendor_keep", label: "ベンダー側保持でも構わない" },
+                  { value: "undecided", label: "まだ決めていない" },
                 ].map((option) => (
                   <label
                     key={option.value}
@@ -312,11 +384,11 @@ export default function HomePage() {
                   >
                     <input
                       type="radio"
-                      name="internal_support"
+                      name="ipOwnership"
                       value={option.value}
-                      checked={guidedCriteria.internal_support === option.value}
+                      checked={vendorForm.ipOwnership === option.value}
                       onChange={(e) =>
-                        setGuidedCriteria({ ...guidedCriteria, internal_support: e.target.value })
+                        setVendorForm({ ...vendorForm, ipOwnership: e.target.value })
                       }
                       className="w-5 h-5"
                     />
@@ -326,17 +398,17 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Q6: 開発スピード */}
+            {/* Q7: パートナーシップの志向（単一選択） */}
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
               <label className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-4">
                 <span>❓</span>
-                <span>開発スピードの重要度は？</span>
+                <span>7. このプロジェクト後の関係性は？</span>
               </label>
               <div className="space-y-3">
                 {[
-                  { value: "high", label: "急ぎ（3ヶ月以内に必要）" },
-                  { value: "medium", label: "標準的（6ヶ月程度）" },
-                  { value: "low", label: "じっくり取り組みたい（1年以上）" },
+                  { value: "one_time", label: "単発で完結させたい" },
+                  { value: "ongoing", label: "良ければ継続的に依頼したい" },
+                  { value: "strategic", label: "長期的な戦略パートナーを探している" },
                 ].map((option) => (
                   <label
                     key={option.value}
@@ -344,45 +416,11 @@ export default function HomePage() {
                   >
                     <input
                       type="radio"
-                      name="speed"
+                      name="partnership"
                       value={option.value}
-                      checked={guidedCriteria.speed === option.value}
+                      checked={vendorForm.partnership === option.value}
                       onChange={(e) =>
-                        setGuidedCriteria({ ...guidedCriteria, speed: e.target.value })
-                      }
-                      className="w-5 h-5"
-                    />
-                    <span className="text-sm text-gray-700">{option.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Q7: 重視するポイント */}
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
-              <label className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-4">
-                <span>❓</span>
-                <span>最も重視するポイントは？</span>
-              </label>
-              <div className="space-y-3">
-                {[
-                  { value: "cost", label: "コスト（予算を抑えたい）" },
-                  { value: "speed", label: "スピード（早く結果が欲しい）" },
-                  { value: "quality", label: "品質（技術力の高さ）" },
-                  { value: "support", label: "サポート（手厚い支援）" },
-                  { value: "track_record", label: "実績（信頼性）" },
-                ].map((option) => (
-                  <label
-                    key={option.value}
-                    className="flex items-center gap-3 p-3 bg-white border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all"
-                  >
-                    <input
-                      type="radio"
-                      name="priority"
-                      value={option.value}
-                      checked={guidedCriteria.priority === option.value}
-                      onChange={(e) =>
-                        setGuidedCriteria({ ...guidedCriteria, priority: e.target.value })
+                        setVendorForm({ ...vendorForm, partnership: e.target.value })
                       }
                       className="w-5 h-5"
                     />
@@ -399,7 +437,7 @@ export default function HomePage() {
                 className="w-full px-4 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
               >
                 <span>🔍</span>
-                <span>深掘りのベクトル検索</span>
+                <span>おすすめベンダーを検索</span>
               </button>
               <button
                 type="button"
@@ -417,8 +455,16 @@ export default function HomePage() {
 }
 
 // ユーティリティ関数
-function hasSelection(criteria: GuidedCriteria): boolean {
-  return Object.values(criteria).some((v) => v !== null && v !== "");
+function hasSelection(form: VendorSearchForm): boolean {
+  return (
+    form.priorities.length > 0 ||
+    form.developmentStyle !== "" ||
+    form.companySize !== "" ||
+    form.techStack.length > 0 ||
+    form.industry !== "" ||
+    form.ipOwnership !== "" ||
+    form.partnership !== ""
+  );
 }
 
 // ダミーデータ生成
@@ -445,14 +491,14 @@ function getMockFreeSearchResults(
 }
 
 function getMockGuidedSearchResults(
-  criteria: GuidedCriteria
+  form: VendorSearchForm
 ): SearchResult[] {
   const companies = ["LaboroAI", "BrainPad", "NUCO", "LiberCraft", "Akari"];
   return companies.map((comp, index) => ({
     id: `guided-${index}`,
-    text: `${comp}は、${criteria.purpose || "様々な"}プロジェクトに強みを持っています。`,
+    text: `${comp}は、あなたの要件に合致したベンダーです。${form.priorities.length > 0 ? `重視項目: ${form.priorities.join(", ")}` : ""}`,
     title: `${comp} - 推薦ベンダー`,
-    snippet: `${comp}は、${criteria.purpose || "様々な"}プロジェクトに強みを持っています。`,
+    snippet: `${comp}は、あなたの要件に合致したベンダーです。`,
     meta: {
       vendor_name: comp,
       meeting_date: new Date().toISOString().split("T")[0],
